@@ -1,46 +1,68 @@
 import { yupResolver } from "@hookform/resolvers/yup";
-import dayjs from "dayjs";
+import { Box, Button } from "@mui/material";
+import dayjs, { Dayjs } from "dayjs";
 import { SubmitHandler, useForm } from "react-hook-form";
 import * as yup from "yup";
 import DateCustom from "../component/date";
 import TimeCustom from "../component/time";
 import { IData } from "../utils/type";
-import "./style.css";
 
 const DatePickerCustom = () => {
-  const today = new Date().toISOString().split("T")[0];
+  let schemaDayjs = yup
+    .mixed<Dayjs>()
+    .nullable()
+    .default(null)
+    .transform((value, originalValue, context) => {
+      if (context.isType(value)) return value;
+      const dayjsValue = dayjs(originalValue);
+      return dayjsValue.isValid() ? dayjsValue : value;
+    });
 
   const schema: any = yup
     .object<IData>()
     .shape({
       fromTime: yup.string().required("this fromTime is required"),
       toTime: yup.string().required("this toTime is required"),
-      fromDate: yup
-        .date()
+      fromDate: schemaDayjs
         .required("this fromDate is required")
-        .max(today, "Do not select a future date")
+        .test("fromDateValid", "Do not select a future date", function (value) {
+          return !value || dayjs(value).isBefore(dayjs().endOf("day"));
+        })
         .test(
           "fromDateValid",
           "From Date must be earlier than To Date",
           function (value) {
             const { toDate } = this.parent;
-            return !toDate || !value || new Date(value) <= new Date(toDate);
+            return (
+              !toDate ||
+              !value ||
+              dayjs(value).isBefore(toDate) ||
+              dayjs(value).isSame(toDate)
+            );
           }
         ),
-      toDate: yup
-        .date()
+      toDate: schemaDayjs
         .required("this toDate is required")
-        .min(yup.ref("fromDate"), "toDate must be later than fromDate")
-        .max(today, "Do not select a future date"),
+        .test("toDateValid", "Do not select a future date", function (value) {
+          return !value || dayjs(value).isBefore(dayjs().endOf("day"));
+        })
+        .test(
+          "toDateValid",
+          "toDate must be later than fromDate",
+          function (value) {
+            const { fromDate } = this.parent;
+            return (
+              !fromDate ||
+              !value ||
+              dayjs(value).isAfter(fromDate) ||
+              dayjs(value).isSame(fromDate)
+            );
+          }
+        ),
     })
     .test("timeValidation", function (values) {
       const { fromDate, toDate, fromTime, toTime } = values;
-      if (
-        fromDate &&
-        toDate &&
-        toTime &&
-        new Date(fromDate).getTime() === new Date(toDate).getTime()
-      ) {
+      if (fromDate && toDate && toTime && dayjs(fromDate).isSame(toDate)) {
         if (fromTime >= toTime) {
           return this.createError({
             path: "fromTime",
@@ -52,12 +74,7 @@ const DatePickerCustom = () => {
     })
     .test("reverseTimeValidation", function (values) {
       const { fromDate, toDate, fromTime, toTime } = values;
-      if (
-        fromDate &&
-        toDate &&
-        fromTime &&
-        new Date(fromDate).getTime() === new Date(toDate).getTime()
-      ) {
+      if (fromDate && toDate && fromTime && dayjs(toDate).isSame(fromDate)) {
         if (fromTime >= toTime) {
           return this.createError({
             path: "toTime",
@@ -69,7 +86,7 @@ const DatePickerCustom = () => {
     });
 
   // khởi tạo useFrom
-  const { handleSubmit, control, watch, trigger } = useForm<IData>({
+  const { handleSubmit, control, trigger, getValues } = useForm<IData>({
     mode: "onChange",
     resolver: yupResolver(schema),
     defaultValues: {
@@ -80,17 +97,7 @@ const DatePickerCustom = () => {
     },
   });
 
-  const fromDate = watch("fromDate");
-  const toDate = watch("toDate");
-  const fromTime = watch("fromTime");
-  const toTime = watch("toTime");
-
-  if (fromDate && toDate && fromTime && toTime) {
-    trigger("fromDate");
-    trigger("toDate");
-    trigger("fromTime");
-    trigger("toTime");
-  }
+  console.log("re-render");
 
   const onSubmit: SubmitHandler<IData> = (data) => {
     console.log({
@@ -101,56 +108,71 @@ const DatePickerCustom = () => {
         "LT"
       )}`,
     });
+
+    // console.log(dayjs.isDayjs(data.fromDate));
+  };
+
+  const handleChange = () => {
+    const values = getValues(["fromDate", "toDate", "fromTime", "toTime"]);
+    if (values[0] && values[1]) {
+      trigger(["fromDate", "toDate"]);
+    }
+    if (values[2] && values[3]) {
+      trigger(["fromTime", "toTime"]);
+    }
   };
 
   return (
-    <div className="from-container">
+    <Box sx={{ maxWidth: "800px", margin: "auto", padding: "16px" }}>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="from-date">
+        <Box sx={{ display: "flex", justifyContent: "space-between" }}>
           <div>
             <DateCustom
               title="From date"
-              error="From is required"
               label="fromDate"
               control={control}
-              required
+              handleChange={handleChange}
             />
           </div>
           <div>
             <DateCustom
               title="To date"
-              error="From is required"
               label="toDate"
               control={control}
-              required
+              handleChange={handleChange}
             />
           </div>
-        </div>
-        <div className="from-time">
+        </Box>
+        <Box sx={{ display: "flex", justifyContent: "space-between" }}>
           <div>
             <TimeCustom
               title="From time"
-              error="From is required"
               label="fromTime"
               control={control}
-              required
+              handleChange={handleChange}
             />
           </div>
           <div>
             <TimeCustom
               title="To time"
-              error="From is required"
               label="toTime"
               control={control}
-              required
+              handleChange={handleChange}
             />
           </div>
-        </div>
-        <div className="button-container">
-          <button className="button">Submit</button>
-        </div>
+        </Box>
+        <Box
+          sx={{
+            textAlign: "end",
+            paddingTop: "16px",
+          }}
+        >
+          <Button type="submit" variant="contained">
+            submit
+          </Button>
+        </Box>
       </form>
-    </div>
+    </Box>
   );
 };
 

@@ -3,11 +3,9 @@ import { Path } from "react-hook-form";
 
 export interface IProps {
   title: string;
-  error: string;
   label: Path<IData>;
   control: any;
-  required: boolean;
-  check?: boolean
+  handleChange: () => void
 }
 
 export interface IData {

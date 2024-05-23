@@ -1,23 +1,38 @@
+import { Box } from "@mui/material";
 import { LocalizationProvider, TimePicker } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { Controller } from "react-hook-form";
 import { IProps } from "../../utils/type";
-import "./style.css";
 
 const TimeCustom = (props: IProps) => {
+  const onTimeChange = () => {
+    props.handleChange();
+  };
   return (
-    <div className="from-time-custom">
-      <p className="title">{props.title}</p>
+    <Box sx={{ paddingTop: "16px" }}>
+      <Box
+        sx={{
+          textAlign: "start",
+          fontWeight: "500",
+          paddingLeft: "16px",
+          paddingBottom: "8px",
+        }}
+      >
+        {props.title}
+      </Box>
       <Controller
         name={props.label}
         control={props.control}
         rules={{
           required: true,
         }}
-        render={({ field: { onChange, value }, fieldState: { error } }) => (
+        render={({ field: { onChange }, fieldState: { error } }) => (
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <TimePicker
-              onChange={onChange}
+              onChange={(e) => {
+                onChange(e)
+                onTimeChange()
+              }}
               slotProps={{
                 textField: {
                   variant: "outlined",
@@ -29,7 +44,7 @@ const TimeCustom = (props: IProps) => {
           </LocalizationProvider>
         )}
       />
-    </div>
+    </Box>
   );
 };
 
